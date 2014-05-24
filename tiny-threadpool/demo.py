@@ -2,15 +2,14 @@
 # -*- coding:utf-8 -*-
 import executorPool
 
+
 class MyTask(executorPool.Task):
-
     def __init__(self, *param):
-
         self.param = param
 
     def run(self):
-
-        return
+        # print '-'.join([str(self.param[0]), str(self.param[1])]) + '\n'
+        return self.param[0]
 
 
 if __name__ == '__main__':
@@ -19,11 +18,12 @@ if __name__ == '__main__':
 
     tasks = []
 
-    for i in range(1000):
+    for i in range(100):
+        tasks.append(MyTask(i, i + 1))
 
-        tasks.append(MyTask(i, i))
+    res = thread_pool.invoke_all(tasks)
 
-    thread_pool.invoke_all(tasks)
+    print str(res)
 
     # exit(0)
 

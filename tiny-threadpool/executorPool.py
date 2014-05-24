@@ -6,18 +6,15 @@ import Queue
 
 
 class Task():
-
     def run(self):
-
         return
 
     def callback(self):
-
         return
 
-class Worker(threading.Thread):
 
-    def __init__(self, task_queue, total_size):
+class Worker(threading.Thread):
+    def __init__(self, task_queue, total_size, res_queue):
 
         threading.Thread.__init__(self)
 
@@ -25,19 +22,25 @@ class Worker(threading.Thread):
 
         self.task_queue = task_queue
 
+        self.res_queue = res_queue
+
         self.start()
 
     def run(self):
 
+        """
+
+
+        """
         while True:
 
             try:
 
-                task = self.task_queue.get(block=False)
+                task, index = self.task_queue.get(block=False)
 
-                task.run()
+                res = task.run()
 
-                task.callback()
+                self.res_queue.put((res, index))
 
                 self.task_queue.task_done()
 
@@ -45,12 +48,11 @@ class Worker(threading.Thread):
 
                 break
 
-            print (str(1 - self.task_queue.qsize()/self.total_size) + '\n')
+            # print (str(1 - self.task_queue.qsize() / self.total_size) + '\n')
 
 
 class FixedExecutor():
-
-    def __init__(self, pool_size = 10):
+    def __init__(self, pool_size=10):
 
         self.pool_size = pool_size
 
@@ -58,8 +60,12 @@ class FixedExecutor():
 
         self.threads = []
 
+        self.res = []
 
     def invoke_all(self, task_list):
+
+        #初始化结果队列
+        self.__init_result_queue()
 
         # 初始化任务队列
         self.__init_task_queue(task_list)
@@ -67,22 +73,38 @@ class FixedExecutor():
         # 初始化线程数组
         self.__init_threads(self.pool_size)
 
+        #等待所有任务执行完毕
+        self.__task_queue.join()
+
+        self.__get_result_list()
+
+        return self.res
+
+    def __get_result_list(self):
+
+        while self.__result_queue.qsize():
+            res, index = self.__result_queue.get(block=False)
+
+            self.res[index] = res
+
+    def __init_result_queue(self):
+
+        self.__result_queue = Queue.Queue()
 
     def __init_task_queue(self, task_list):
 
-        self.task_queue = Queue.Queue()
+        self.__task_queue = Queue.Queue()
 
-        for task in task_list:
+        for i in range(len(task_list)):
+            self.__task_queue.put((task_list[i], i))
 
-            self.task_queue.put(task)
+            self.res.append(None)
 
             self.total_size += 1
-
 
     def __init_threads(self, pool_size):
 
         self.threads = []
 
         for i in range(pool_size):
-
-            self.threads.append(Worker(self.task_queue, self.total_size))
+            self.threads.append(Worker(self.__task_queue, self.total_size, self.__result_queue))
